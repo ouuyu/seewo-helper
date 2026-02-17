@@ -1,0 +1,13 @@
+{
+  "configDirectory": "D:\\SeewoHelper",
+  "enableAutostart": false,
+  "silentStart": false,
+  "wallpaperAutoRefresh": true,
+  "wallpaperAutoSet": false,
+  "wallpaperShowCountdown": true,
+  "wallpaperCountdownDate": "",
+  "wallpaperResolution": "UHD",
+  "wallpaperMarket": "zh-CN",
+  "wallpaperIndex": "0",
+  "wallpaperSaveDirectory": "D:\\SeewoHelper\\Wallpapers"
+}
