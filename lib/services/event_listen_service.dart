@@ -38,10 +38,14 @@ class EventListenService extends ChangeNotifier {
   }) {
     _eventListenDir = eventListenDir;
     if (processNames != null && processNames.isNotEmpty) {
-      _processNames = processNames
-          .map((p) => p.trim())
+      final normalized = processNames
+          .expand((p) => p.split(RegExp(r'[,，;；\s]+')))
+          .map((p) => p.trim().toLowerCase())
           .where((p) => p.isNotEmpty)
           .toList();
+      if (normalized.isNotEmpty) {
+        _processNames = normalized;
+      }
     }
   }
 
@@ -98,16 +102,25 @@ class EventListenService extends ChangeNotifier {
   /// 扫描进程打开的文件
   Future<void> _scan() async {
     try {
-      // 构建进程名匹配模式
-      final processPattern = _processNames
-          .map((p) => p.replaceAll('.', r'\.'))
-          .join('|');
+      final processNames = _processNames
+          .map((p) => p.trim().toLowerCase())
+          .where((p) => p.isNotEmpty)
+          .toSet()
+          .toList();
+      if (processNames.isEmpty) {
+        return;
+      }
 
-      final result = await Process.run('powershell', [
-        '-NoProfile',
-        '-Command',
-        "Get-CimInstance Win32_Process | Where-Object { \$_.Name -match '$processPattern' } | Select-Object Name, ProcessId, CommandLine | ConvertTo-Json",
-      ]);
+      final quotedProcessNames = processNames
+          .map((p) => "'${p.replaceAll("'", "''")}'")
+          .join(', ');
+      final command = "\$targets = @($quotedProcessNames); "
+          "Get-CimInstance Win32_Process | "
+          "Where-Object { \$_.Name -and (\$targets -contains \$_.Name.ToLower()) } | "
+          "Select-Object Name, ProcessId, CommandLine | "
+          "ConvertTo-Json -Compress";
+
+      final result = await _runPowerShell(command);
 
       if (result.exitCode != 0) {
         // 静默失败，不刷屏
@@ -150,6 +163,22 @@ class EventListenService extends ChangeNotifier {
     } catch (e) {
       // 避免重复的扫描错误日志刷屏
       log('扫描异常: $e', name: 'EventListenService');
+    }
+  }
+
+  Future<ProcessResult> _runPowerShell(String command) async {
+    try {
+      return await Process.run('powershell', [
+        '-NoProfile',
+        '-Command',
+        command,
+      ]);
+    } on ProcessException {
+      return Process.run('pwsh', [
+        '-NoProfile',
+        '-Command',
+        command,
+      ]);
     }
   }
 
@@ -265,15 +294,13 @@ class EventListenService extends ChangeNotifier {
         try {
           final escapedSource = sourcePath.replaceAll("'", "''");
           final escapedTarget = targetPath.replaceAll("'", "''");
-          final psResult = await Process.run('powershell', [
-            '-NoProfile',
-            '-Command',
+          final psResult = await _runPowerShell(
             "\$fs = [IO.File]::Open('$escapedSource', 'Open', 'Read', 'ReadWrite,Delete'); "
-                "\$buf = New-Object byte[] \$fs.Length; "
-                "[void]\$fs.Read(\$buf, 0, \$fs.Length); "
-                "\$fs.Close(); "
-                "[IO.File]::WriteAllBytes('$escapedTarget', \$buf)",
-          ]);
+            "\$buf = New-Object byte[] \$fs.Length; "
+            "[void]\$fs.Read(\$buf, 0, \$fs.Length); "
+            "\$fs.Close(); "
+            "[IO.File]::WriteAllBytes('$escapedTarget', \$buf)",
+          );
           if (psResult.exitCode == 0) {
             copied = true;
           } else {

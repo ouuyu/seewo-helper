@@ -292,6 +292,25 @@ class AppConfig {
           ),
         ],
       ),
+      SettingSection(
+        title: '上传',
+        showInSettings: false, // 上传配置在上传页面管理，不在设置页面显示
+        groups: [
+          SettingGroup(
+            title: '自动上传',
+            items: [
+              SettingItem<bool>(
+                key: 'enableAutoUpload',
+                title: '自动上传',
+                description: '扫描后自动上传待上传文件',
+                type: SettingType.toggle,
+                defaultValue: false,
+                icon: Icons.cloud_upload,
+              ),
+            ],
+          ),
+        ],
+      ),
     ];
 
     settings = [
@@ -403,6 +422,9 @@ class AppConfig {
       getValue<bool>('enableHotspotAutoStart') ?? false;
   set enableHotspotAutoStart(bool value) =>
       setValue('enableHotspotAutoStart', value);
+
+    bool get enableAutoUpload => getValue<bool>('enableAutoUpload') ?? false;
+    set enableAutoUpload(bool value) => setValue('enableAutoUpload', value);
 
   /// 从 JSON 加载
   void fromJson(Map<String, dynamic> json) {

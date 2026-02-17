@@ -1,8 +1,22 @@
 # Seewo Helper
 
-卓越的希沃大屏助手，K12 教育好帮手。
+一个面向 Windows 的希沃辅助工具，聚合了文件监听、上传、壁纸与热点等常用能力，适合教室/办公设备的日常辅助管理。
 
-## 本地开发
+## 功能简介
+
+- 事件监听：监听指定进程（如 PPT/Word/Excel/浏览器）打开的文件，并复制到本地归档目录。
+- 文件上传：扫描 `EventListen` 目录并批量上传，支持自动上传、日志查看、上传直链与二维码复制。
+- 壁纸管理：获取最新壁纸、查看壁纸信息，并一键设置为桌面壁纸。
+- 热点管理：在应用内配置并管理 Windows 热点（SSID、密码、IP），支持热点诊断。
+- 系统托盘：关闭窗口后可驻留托盘，支持显示/隐藏与退出。
+- 设置中心：统一管理配置目录、开机自启、静默启动、监听与自动上传等参数。
+
+## 运行环境
+
+- Windows（推荐）
+- Flutter SDK 3.x+
+
+## 快速启动
 
 ```bash
 flutter pub get
@@ -10,37 +24,14 @@ flutter analyze
 flutter run -d windows
 ```
 
-## 工程化与 CI/CD
+## 配置与数据目录
 
-已内置以下 GitHub Actions：
+- 默认配置目录：`D:\SeewoHelper`
+- 监听文件目录：`<配置目录>\EventListen`
+- 壁纸默认保存目录：`<配置目录>\Wallpapers`
 
-- `.github/workflows/ci.yml`
-	- Push/PR 自动执行：`analyze`
-	- 自动构建 Windows Release 并上传构建产物（artifact）
+## 常用说明
 
-- `.github/workflows/version-bump.yml`
-	- 手动触发 `workflow_dispatch`，选择 `patch/minor/major`
-	- 自动更新 `pubspec.yaml` 版本、写入 `CHANGELOG.md`
-	- 自动提交并创建 tag（如 `v1.2.3`）
-	- 在同一条 workflow 内自动构建并发布 GitHub Release
-
-## 版本管理约定
-
-- 项目采用语义化版本（SemVer）：`MAJOR.MINOR.PATCH`
-- `pubspec.yaml` 使用 Flutter 规范：`x.y.z+build`
-- 版本升级脚本：`tool/bump_version.dart`
-
-示例：
-
-```bash
-dart tool/bump_version.dart --type patch
-dart tool/bump_version.dart --type minor
-dart tool/bump_version.dart --type major
-```
-
-## 发布流程（推荐）
-
-1. 在 GitHub Actions 手动执行 `Version Bump`
-2. 选择版本升级类型（patch/minor/major）
-3. Workflow 自动提交并打 tag
-4. 同一条 Workflow 自动构建并发布二进制
+- 首次使用建议先在“设置”页确认配置目录与启动行为。
+- 若需要使用热点功能，请以管理员权限运行应用。
+- 若启用静默启动，应用会隐藏主窗口并在托盘中运行。

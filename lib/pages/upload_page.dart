@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'upload_recent_fullscreen_page.dart';
 import '../services/config_service.dart';
 import '../services/upload_service.dart';
 
@@ -18,10 +19,12 @@ class UploadPage extends StatefulWidget {
 
 class _UploadPageState extends State<UploadPage> {
   final ScrollController _logScrollController = ScrollController();
+  bool _autoUpload = false;
 
   @override
   void initState() {
     super.initState();
+    _autoUpload = context.read<ConfigService>().getConfig().enableAutoUpload;
     // 页面加载后自动扫描
     WidgetsBinding.instance.addPostFrameCallback((_) => _scanFiles());
   }
@@ -55,6 +58,39 @@ class _UploadPageState extends State<UploadPage> {
     final service = context.read<UploadService>();
     service.reset();
     await service.scanFiles(_configDirectory);
+
+    final hasPending = service.fileItems
+        .any((item) => item.status == FileUploadStatus.pending);
+    if (_autoUpload && !service.isUploading && hasPending) {
+      await service.startUpload(_configDirectory);
+    }
+  }
+
+  Future<void> _toggleAutoUpload(bool value) async {
+    final configService = context.read<ConfigService>();
+    final config = configService.getConfig();
+
+    setState(() {
+      _autoUpload = value;
+    });
+
+    config.enableAutoUpload = value;
+    final saved = await configService.saveConfig(config);
+
+    if (!mounted) return;
+    if (!saved) {
+      setState(() {
+        _autoUpload = !value;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('自动上传设置保存失败')),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(value ? '已开启自动上传' : '已关闭自动上传')),
+    );
   }
 
   /// 开始上传
@@ -76,6 +112,16 @@ class _UploadPageState extends State<UploadPage> {
       await directory.create(recursive: true);
     }
     await Process.run('explorer', [dir]);
+  }
+
+  /// 打开最近文件全屏视图
+  Future<void> _openRecentFilesFullscreen() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const UploadRecentFullscreenPage(),
+        fullscreenDialog: true,
+      ),
+    );
   }
 
   /// 展示已上传文件的直链并支持复制
@@ -191,6 +237,11 @@ class _UploadPageState extends State<UploadPage> {
         elevation: 0,
         backgroundColor: Theme.of(context).colorScheme.surface,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.fullscreen),
+            tooltip: '全屏查看最近文件',
+            onPressed: _openRecentFilesFullscreen,
+          ),
           IconButton(
             icon: const Icon(Icons.folder_open),
             tooltip: '打开 EventListen 文件夹',
@@ -315,6 +366,20 @@ class _UploadPageState extends State<UploadPage> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '自动上传',
+                      style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                    ),
+                    Switch(
+                      value: _autoUpload,
+                      onChanged: isUploading ? null : _toggleAutoUpload,
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 8),
                 // 刷新按钮
                 OutlinedButton.icon(
                   onPressed: isUploading ? null : _scanFiles,
