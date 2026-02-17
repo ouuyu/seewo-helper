@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:path/path.dart' as path;
+import 'package:watcher/watcher.dart';
 
 /// 上传记录条目
 class UploadRecord {
@@ -84,6 +85,11 @@ class UploadService extends ChangeNotifier {
 
   /// 上传记录数据库（内存缓存）
   Map<String, UploadRecord> _uploadRecords = {};
+
+  /// 文件监控器
+  DirectoryWatcher? _directoryWatcher;
+  StreamSubscription<WatchEvent>? _watcherSubscription;
+  bool _autoScanEnabled = false;
 
   bool get isUploading => _isUploading;
   List<UploadFileItem> get fileItems => List.unmodifiable(_fileItems);
@@ -437,8 +443,55 @@ class UploadService extends ChangeNotifier {
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 
+  /// 启动后台文件监控
+  void startAutoScan(String configDirectory) {
+    if (_autoScanEnabled) return;
+
+    final eventListenDir = '$configDirectory\\EventListen';
+    final dir = Directory(eventListenDir);
+
+    if (!dir.existsSync()) {
+      _addLog('EventListen 目录不存在，无法启动监控: $eventListenDir');
+      return;
+    }
+
+    _directoryWatcher = DirectoryWatcher(eventListenDir);
+    _watcherSubscription = _directoryWatcher!.events.listen((event) {
+      // 只处理文件添加和修改事件
+      if (event.type == ChangeType.ADD || event.type == ChangeType.MODIFY) {
+        _addLog('检测到文件变化: ${event.path}');
+        // 延迟一下再扫描，避免频繁触发
+        Future.delayed(const Duration(seconds: 1), () async {
+          if (!_isUploading) {
+            await scanFiles(configDirectory);
+            final hasPending = _fileItems
+                .any((item) => item.status == FileUploadStatus.pending);
+            if (hasPending) {
+              await startUpload(configDirectory);
+            }
+          }
+        });
+      }
+    });
+
+    _autoScanEnabled = true;
+    _addLog('已启动后台文件监控: $eventListenDir');
+  }
+
+  /// 停止后台文件监控
+  void stopAutoScan() {
+    if (!_autoScanEnabled) return;
+
+    _watcherSubscription?.cancel();
+    _watcherSubscription = null;
+    _directoryWatcher = null;
+    _autoScanEnabled = false;
+    _addLog('已停止后台文件监控');
+  }
+
   @override
   void dispose() {
+    stopAutoScan();
     stopUpload();
     super.dispose();
   }

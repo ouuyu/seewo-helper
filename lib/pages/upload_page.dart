@@ -26,7 +26,13 @@ class _UploadPageState extends State<UploadPage> {
     super.initState();
     _autoUpload = context.read<ConfigService>().getConfig().enableAutoUpload;
     // 页面加载后自动扫描
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scanFiles());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _scanFiles();
+      // 如果自动上传开启，启动后台监控
+      if (_autoUpload && mounted) {
+        context.read<UploadService>().startAutoScan(_configDirectory);
+      }
+    });
   }
 
   @override
@@ -91,6 +97,14 @@ class _UploadPageState extends State<UploadPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(value ? '已开启自动上传' : '已关闭自动上传')),
     );
+
+    // 启动或停止后台监控
+    final uploadService = context.read<UploadService>();
+    if (value) {
+      uploadService.startAutoScan(_configDirectory);
+    } else {
+      uploadService.stopAutoScan();
+    }
   }
 
   /// 开始上传
