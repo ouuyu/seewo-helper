@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:win32/win32.dart' as win32;
+import 'dart:io';
+import 'package:path/path.dart' as path;
 import 'dart:io';
 import 'services/config_service.dart';
 import 'services/event_listen_service.dart';
@@ -20,22 +21,21 @@ import 'pages/upload_page.dart';
 
 /// 检查是否已经有实例运行
 bool _isSingleInstance() {
-  const mutexName = 'SeewoHelperMutex';
-  final hMutex = win32.CreateMutex(win32.nullptr, win32.TRUE, win32.TEXT(mutexName));
-  final lastError = win32.GetLastError();
-  
-  if (hMutex == 0) {
-    return false; // 创建失败
+  try {
+    final tempDir = Directory.systemTemp.path;
+    final lockFile = File(path.join(tempDir, 'seewo_helper.lock'));
+    
+    if (lockFile.existsSync()) {
+      return false; // 锁文件存在，认为已有实例
+    }
+    
+    // 创建锁文件
+    lockFile.writeAsStringSync('running');
+    return true;
+  } catch (e) {
+    // 如果出错，允许运行
+    return true;
   }
-  
-  if (lastError == win32.ERROR_ALREADY_EXISTS) {
-    // 互斥锁已存在，说明已有实例
-    win32.CloseHandle(hMutex);
-    return false;
-  }
-  
-  // 成功创建互斥锁，保持它打开直到应用退出
-  return true;
 }
 
 /// 创建开始菜单快捷方式
