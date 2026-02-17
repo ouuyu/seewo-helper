@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:win32/win32.dart' as win32;
+import 'dart:io';
 import 'services/config_service.dart';
 import 'services/event_listen_service.dart';
 import 'services/tray_service.dart';
@@ -11,12 +13,72 @@ import 'services/upload_service.dart';
 import 'pages/home_page.dart';
 import 'pages/event_listen_page.dart';
 import 'pages/settings_page.dart';
+import 'pages/settings_page.dart';
 import 'pages/wallpaper_page.dart';
 import 'pages/hotspot_page.dart';
 import 'pages/upload_page.dart';
 
+/// 检查是否已经有实例运行
+bool _isSingleInstance() {
+  const mutexName = 'SeewoHelperMutex';
+  final hMutex = win32.CreateMutex(win32.nullptr, win32.TRUE, win32.TEXT(mutexName));
+  final lastError = win32.GetLastError();
+  
+  if (hMutex == 0) {
+    return false; // 创建失败
+  }
+  
+  if (lastError == win32.ERROR_ALREADY_EXISTS) {
+    // 互斥锁已存在，说明已有实例
+    win32.CloseHandle(hMutex);
+    return false;
+  }
+  
+  // 成功创建互斥锁，保持它打开直到应用退出
+  return true;
+}
+
+/// 创建开始菜单快捷方式
+Future<void> _createStartMenuShortcut() async {
+  if (!Platform.isWindows) return;
+  
+  try {
+    final exePath = Platform.resolvedExecutable;
+    final startMenuPath = '${Platform.environment['APPDATA']}\\Microsoft\\Windows\\Start Menu\\Programs\\Seewo Helper.lnk';
+    
+    // 使用PowerShell创建快捷方式
+    final script = '''
+\$WshShell = New-Object -comObject WScript.Shell
+\$Shortcut = \$WshShell.CreateShortcut("$startMenuPath")
+\$Shortcut.TargetPath = "$exePath"
+\$Shortcut.WorkingDirectory = "${Directory(exePath).parent.path}"
+\$Shortcut.IconLocation = "$exePath,0"
+\$Shortcut.Description = "Seewo Helper"
+\$Shortcut.Save()
+''';
+    
+    final result = await Process.run('powershell', ['-Command', script], runInShell: true);
+    if (result.exitCode != 0) {
+      print('创建开始菜单快捷方式失败: ${result.stderr}');
+    } else {
+      print('开始菜单快捷方式创建成功');
+    }
+  } catch (e) {
+    print('创建开始菜单快捷方式时出错: $e');
+  }
+}
+
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 检查单实例
+  if (!_isSingleInstance()) {
+    print('Seewo Helper 已在运行，只允许一个实例。');
+    return;
+  }
+
+  // 创建开始菜单快捷方式（覆盖操作）
+  await _createStartMenuShortcut();
 
   // 检查是否为静默启动（优先检查启动参数）
   final isSilentStart = args.contains('--silent');
