@@ -3,8 +3,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import 'dart:io';
+import 'dart:developer';
 import 'package:path/path.dart' as path;
-import 'dart:io';
 import 'services/config_service.dart';
 import 'services/event_listen_service.dart';
 import 'services/tray_service.dart';
@@ -13,7 +13,6 @@ import 'services/hotspot_service.dart';
 import 'services/upload_service.dart';
 import 'pages/home_page.dart';
 import 'pages/event_listen_page.dart';
-import 'pages/settings_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/wallpaper_page.dart';
 import 'pages/hotspot_page.dart';
@@ -59,12 +58,12 @@ Future<void> _createStartMenuShortcut() async {
     
     final result = await Process.run('powershell', ['-Command', script], runInShell: true);
     if (result.exitCode != 0) {
-      print('创建开始菜单快捷方式失败: ${result.stderr}');
+      log('创建开始菜单快捷方式失败: ${result.stderr}');
     } else {
-      print('开始菜单快捷方式创建成功');
+      log('开始菜单快捷方式创建成功');
     }
   } catch (e) {
-    print('创建开始菜单快捷方式时出错: $e');
+    log('创建开始菜单快捷方式时出错: $e');
   }
 }
 
@@ -73,7 +72,7 @@ Future<void> main(List<String> args) async {
 
   // 检查单实例
   if (!_isSingleInstance()) {
-    print('Seewo Helper 已在运行，只允许一个实例。');
+    log('Seewo Helper 已在运行，只允许一个实例。');
     return;
   }
 
