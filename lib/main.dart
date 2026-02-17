@@ -11,6 +11,9 @@ import 'services/tray_service.dart';
 import 'services/wallpaper_service.dart';
 import 'services/hotspot_service.dart';
 import 'services/upload_service.dart';
+import 'services/shortcut_service.dart';
+import 'services/autostart_service.dart';
+import 'models/app_config.dart';
 import 'pages/home_page.dart';
 import 'pages/event_listen_page.dart';
 import 'pages/settings_page.dart';
@@ -37,33 +40,17 @@ bool _isSingleInstance() {
   }
 }
 
-/// 创建开始菜单快捷方式
-Future<void> _createStartMenuShortcut() async {
-  if (!Platform.isWindows) return;
+/// 初始化启动项和快捷方式
+/// 确保始终使用当前最新路径覆盖
+Future<void> _initializeStartupItems(AppConfig config) async {
+  // 创建/更新开始菜单快捷方式（覆盖操作）
+  await ShortcutService.createStartMenuShortcut();
   
-  try {
-    final exePath = Platform.resolvedExecutable;
-    final startMenuPath = '${Platform.environment['APPDATA']}\\Microsoft\\Windows\\Start Menu\\Programs\\Seewo Helper.lnk';
-    
-    // 使用PowerShell创建快捷方式
-    final script = '''
-\$WshShell = New-Object -comObject WScript.Shell
-\$Shortcut = \$WshShell.CreateShortcut("$startMenuPath")
-\$Shortcut.TargetPath = "$exePath"
-\$Shortcut.WorkingDirectory = "${Directory(exePath).parent.path}"
-\$Shortcut.IconLocation = "$exePath,0"
-\$Shortcut.Description = "Seewo Helper"
-\$Shortcut.Save()
-''';
-    
-    final result = await Process.run('powershell', ['-Command', script], runInShell: true);
-    if (result.exitCode != 0) {
-      log('创建开始菜单快捷方式失败: ${result.stderr}');
-    } else {
-      log('开始菜单快捷方式创建成功');
-    }
-  } catch (e) {
-    log('创建开始菜单快捷方式时出错: $e');
+  // 如果启用了自启动，更新注册表项（覆盖操作）
+  if (config.enableAutostart) {
+    await AutostartService.enableAutostart(
+      silentStart: config.silentStart,
+    );
   }
 }
 
@@ -76,9 +63,6 @@ Future<void> main(List<String> args) async {
     return;
   }
 
-  // 创建开始菜单快捷方式（覆盖操作）
-  await _createStartMenuShortcut();
-
   // 检查是否为静默启动（优先检查启动参数）
   final isSilentStart = args.contains('--silent');
 
@@ -89,6 +73,9 @@ Future<void> main(List<String> args) async {
   final configService = ConfigService();
   await configService.initialize();
   final config = configService.getConfig();
+
+  // 初始化启动项和快捷方式（使用最新路径覆盖）
+  await _initializeStartupItems(config);
 
   // 使用启动参数或配置决定是否隐藏窗口
   final shouldHideWindow = isSilentStart || config.silentStart;

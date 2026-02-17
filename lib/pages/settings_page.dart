@@ -6,6 +6,7 @@ import '../models/app_config.dart';
 import '../models/setting_item.dart';
 import '../services/config_service.dart';
 import '../services/autostart_service.dart';
+import '../services/shortcut_service.dart';
 
 /// 设置页面 - 使用统一的配置项批量渲染
 class SettingsPage extends StatefulWidget {
@@ -337,9 +338,12 @@ class _SettingsPageState extends State<SettingsPage> {
     final success = await configService.saveConfig(_config);
 
     if (success) {
-      // 处理开机自启动设置
+      // 创建/更新开始菜单快捷方式（始终覆盖为最新路径）
+      await ShortcutService.createStartMenuShortcut();
+      
+      // 处理开机自启动设置（始终覆盖为最新路径）
       if (_config.enableAutostart) {
-        // 传递静默启动参数到注册表
+        // 传递静默启动参数到注册表（-Force参数确保覆盖）
         await AutostartService.enableAutostart(
           silentStart: _config.silentStart,
         );
