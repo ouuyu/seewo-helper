@@ -1,77 +1,23 @@
-name: Version Bump
+name: Release Windows
 
 on:
-  workflow_dispatch:
-    inputs:
-      bump:
-        description: 'Version bump type'
-        required: true
-        default: patch
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
 
 jobs:
-  bump:
-    name: Bump Version & Tag
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.bump.outputs.version }}
-      tag: ${{ steps.bump.outputs.tag }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
-      - name: Bump version in pubspec and changelog
-        id: bump
-        run: |
-          dart tool/bump_version.dart --type "${{ github.event.inputs.bump }}"
-          VERSION=$(dart tool/bump_version.dart --print-only)
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Commit changes
-        run: |
-          git add pubspec.yaml CHANGELOG.md
-          git commit -m "chore(release): bump version to ${{ steps.bump.outputs.version }}" || echo "No changes to commit"
-
-      - name: Push commit
-        run: git push
-
-      - name: Create and push tag
-        run: |
-          git tag "v${{ steps.bump.outputs.version }}"
-          git push origin "v${{ steps.bump.outputs.version }}"
-
   release_windows:
     name: Build & Release (Windows)
     runs-on: windows-latest
-    needs: bump
 
     steps:
       - name: Checkout tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.bump.outputs.tag }}
+          fetch-depth: 0
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -92,12 +38,12 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/seewo_helper-${{ needs.bump.outputs.tag }}-windows.zip
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/seewo_helper-${{ github.ref_name }}-windows.zip
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.bump.outputs.tag }}
+          tag_name: ${{ github.ref_name }}
           generate_release_notes: true
           files: |
-            dist/seewo_helper-${{ needs.bump.outputs.tag }}-windows.zip
+            dist/seewo_helper-${{ github.ref_name }}-windows.zip

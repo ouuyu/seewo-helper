@@ -24,6 +24,32 @@ flutter analyze
 flutter run -d windows
 ```
 
+## 发版流程（本地触发）
+
+1. 在本地执行版本递增：
+
+```bash
+dart tool/bump_version.dart --type patch
+```
+
+可选参数：
+- `--type major|minor|patch`：版本号递增类型（默认 `patch`）
+- `--next-only`：仅输出下一版本号，不改文件
+- `--print-only`：仅输出当前版本号，不改文件
+- `--release`：递增后自动执行 `git add/commit/tag/push`
+
+2. 若未使用 `--release`，手动提交并推送：
+
+```bash
+git add pubspec.yaml CHANGELOG.md
+git commit -m "chore(release): bump version to x.y.z"
+git tag vx.y.z
+git push origin
+git push origin vx.y.z
+```
+
+3. 推送 `v*` tag 后，GitHub Actions 会自动构建 Windows 包并发布 Release。
+
 ## 配置与数据目录
 
 - 默认配置目录：`D:\SeewoHelper`
