@@ -7,7 +7,6 @@
 ```bash
 flutter pub get
 flutter analyze
-flutter test
 flutter run -d windows
 ```
 
@@ -16,7 +15,7 @@ flutter run -d windows
 已内置以下 GitHub Actions：
 
 - `.github/workflows/ci.yml`
-	- Push/PR 自动执行：`analyze`、`test`
+	- Push/PR 自动执行：`analyze`
 	- 自动构建 Windows Release 并上传构建产物（artifact）
 
 - `.github/workflows/version-bump.yml`

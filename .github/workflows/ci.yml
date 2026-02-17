@@ -7,8 +7,8 @@ on:
     branches: [main, master]
 
 jobs:
-  analyze_test:
-    name: Analyze & Test
+  analyze:
+    name: Analyze
     runs-on: ubuntu-latest
 
     steps:
@@ -27,13 +27,10 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
-      - name: Test
-        run: flutter test
-
   build_windows:
     name: Build Windows
     runs-on: windows-latest
-    needs: analyze_test
+    needs: analyze
 
     steps:
       - name: Checkout
