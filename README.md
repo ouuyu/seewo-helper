@@ -29,7 +29,7 @@ flutter run -d windows
 1. 在本地执行版本递增：
 
 ```bash
-dart tool/bump_version.dart --type patch
+dart tool/bump_version.dart --type patch --release
 ```
 
 可选参数：
