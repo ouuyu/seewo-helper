@@ -4,9 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 import 'dart:io';
 import 'dart:developer';
-import 'package:path/path.dart' as path;
 import 'services/config_service.dart';
 import 'services/event_listen_service.dart';
+import 'services/instance_service.dart';
 import 'services/tray_service.dart';
 import 'services/wallpaper_service.dart';
 import 'services/hotspot_service.dart';
@@ -20,25 +20,6 @@ import 'pages/settings_page.dart';
 import 'pages/wallpaper_page.dart';
 import 'pages/hotspot_page.dart';
 import 'pages/upload_page.dart';
-
-/// 检查是否已经有实例运行
-bool _isSingleInstance() {
-  try {
-    final tempDir = Directory.systemTemp.path;
-    final lockFile = File(path.join(tempDir, 'seewo_helper.lock'));
-    
-    if (lockFile.existsSync()) {
-      return false; // 锁文件存在，认为已有实例
-    }
-    
-    // 创建锁文件
-    lockFile.writeAsStringSync('running');
-    return true;
-  } catch (e) {
-    // 如果出错，允许运行
-    return true;
-  }
-}
 
 /// 初始化启动项和快捷方式
 /// 确保始终使用当前最新路径覆盖
@@ -57,14 +38,21 @@ Future<void> _initializeStartupItems(AppConfig config) async {
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 检查单实例
-  if (!_isSingleInstance()) {
-    log('Seewo Helper 已在运行，只允许一个实例。');
-    return;
-  }
-
   // 检查是否为静默启动（优先检查启动参数）
   final isSilentStart = args.contains('--silent');
+
+  // 检查单实例（统一文件锁）
+  final instanceService = InstanceService();
+  if (!await instanceService.acquire()) {
+    log('Seewo Helper 已在运行，只允许一个实例。');
+    if (!isSilentStart) {
+      Process.run('powershell', [
+        '-Command',
+        'Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show("Seewo Helper 已在运行，只允许一个实例。", "提示", "OK", "Information")',
+      ]);
+    }
+    return;
+  }
 
   // 初始化窗口管理器
   await windowManager.ensureInitialized();
@@ -77,8 +65,9 @@ Future<void> main(List<String> args) async {
   // 初始化启动项和快捷方式（使用最新路径覆盖）
   await _initializeStartupItems(config);
 
-  // 使用启动参数或配置决定是否隐藏窗口
-  final shouldHideWindow = isSilentStart || config.silentStart;
+  // 仅在显式传入 --silent 时隐藏窗口。
+  // 避免用户手动启动时因配置项而看不到窗口。
+  final shouldHideWindow = isSilentStart;
 
   // 窗口配置
   final windowOptions = WindowOptions(
@@ -101,7 +90,20 @@ Future<void> main(List<String> args) async {
   
   // 初始化托盘服务（在窗口显示/隐藏之前初始化托盘）
   final trayService = TrayService();
-  await trayService.initialize();
+  var trayReady = true;
+  try {
+    await trayService.initialize();
+  } catch (e) {
+    trayReady = false;
+    log('托盘初始化失败，将强制显示窗口: $e');
+  }
+
+  // 如果请求静默启动但托盘不可用，强制显示窗口避免“消失”。
+  if (shouldHideWindow && !trayReady) {
+    await windowManager.setSkipTaskbar(false);
+    await windowManager.show();
+    await windowManager.focus();
+  }
   
   // 初始化事件监听服务
   final eventListenService = EventListenService();
@@ -135,7 +137,7 @@ Future<void> main(List<String> args) async {
       wallpaperService: wallpaperService,
       hotspotService: hotspotService,
       uploadService: uploadService,
-      shouldHideWindow: shouldHideWindow,  // 传递静默启动标志
+      shouldHideWindow: shouldHideWindow && trayReady,  // 无托盘时不隐藏窗口
     ),
   );
 }

@@ -4,6 +4,7 @@ import 'package:path/path.dart' as path;
 import 'package:local_notifier/local_notifier.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
+import 'instance_service.dart';
 
 /// 托盘服务 - 管理系统托盘图标和菜单
 class TrayService with TrayListener {
@@ -121,6 +122,18 @@ class TrayService with TrayListener {
 
   /// 退出应用
   Future<void> exitApp() async {
+    try {
+      await dispose();
+    } catch (_) {}
+
+    try {
+      await InstanceService().release();
+    } catch (_) {}
+
+    try {
+      await windowManager.setPreventClose(false);
+    } catch (_) {}
+
     await windowManager.destroy();
     exit(0);
   }
