@@ -24,14 +24,20 @@ import 'pages/upload_page.dart';
 /// 初始化启动项和快捷方式
 /// 确保始终使用当前最新路径覆盖
 Future<void> _initializeStartupItems(AppConfig config) async {
-  // 创建/更新开始菜单快捷方式（覆盖操作）
+  if (!Platform.isWindows) return;
+
+  // 1. 创建/更新开始菜单快捷方式（始终覆盖，确保路径最新）
   await ShortcutService.createStartMenuShortcut();
   
-  // 如果启用了自启动，更新注册表项（覆盖操作）
+  // 2. 同步开机自启状态
   if (config.enableAutostart) {
+    // 启用或更新（-Force效果由 reg add /f 提供），确保路径和参数最新
     await AutostartService.enableAutostart(
       silentStart: config.silentStart,
     );
+  } else {
+    // 如果配置未启用，确保清理掉注册表项（可能残留老路径的自启项）
+    await AutostartService.disableAutostart();
   }
 }
 
