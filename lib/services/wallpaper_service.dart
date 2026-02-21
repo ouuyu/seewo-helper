@@ -50,6 +50,9 @@ class WallpaperService extends ChangeNotifier {
   DateTime? get lastUpdated => _lastUpdated;
 
   Future<void> initialize(AppConfig config) async {
+    // 如果已经加载了或者是正在加载中，则不重复执行自动刷新
+    if (_latest != null || _isLoading) return;
+
     if (config.wallpaperAutoRefresh) {
       await refresh(config: config, setAsWallpaper: config.wallpaperAutoSet);
     }
@@ -59,6 +62,8 @@ class WallpaperService extends ChangeNotifier {
     required AppConfig config,
     bool setAsWallpaper = false,
   }) async {
+    if (_isLoading) return; // 防止并发刷新
+
     _isLoading = true;
     _error = null;
     notifyListeners();

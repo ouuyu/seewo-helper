@@ -44,8 +44,8 @@ Future<void> _initializeStartupItems(AppConfig config) async {
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 检查是否为静默启动（优先检查启动参数）
-  final isSilentStart = args.contains('--silent');
+  // 检查是否为静默启动（支持 --silent 和 --silent-start）
+  final isSilentStart = args.contains('--silent') || args.contains('--silent-start');
 
   // 检查单实例（统一文件锁）
   final instanceService = InstanceService();
@@ -119,6 +119,12 @@ Future<void> main(List<String> args) async {
 
   // 初始化热点服务
   await hotspotService.initialize(config);
+
+  // 自动刷新壁纸（开机自启动时触发）
+  // 不使用 await，避免网络请求延迟阻塞应用启动
+  wallpaperService.initialize(config).catchError((e) {
+    log('壁纸服务初始化失败: $e');
+  });
 
   // 如果配置了自动启动事件监听，则立即开始
   if (config.enableEventListen) {

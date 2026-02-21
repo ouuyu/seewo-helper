@@ -24,7 +24,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   bool silent_start = false;
   for (const auto& arg : command_line_arguments) {
-    if (arg == "--silent-start") {
+    if (arg == "--silent" || arg == "--silent-start") {
       silent_start = true;
       break;
     }

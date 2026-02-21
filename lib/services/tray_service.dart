@@ -61,14 +61,23 @@ class TrayService with TrayListener {
 
     try {
       final iconPath = _getIconPath();
+      if (!File(iconPath).existsSync()) {
+        throw Exception('托盘图标文件不存在: $iconPath');
+      }
       await trayManager.setIcon(iconPath);
     } catch (e) {
       log('托盘图标设置失败: $e');
+      rethrow; // 重新抛出，让调用者知晓初始化失败
     }
     
-    await _updateMenu();
+    try {
+      await _updateMenu();
+      trayManager.addListener(this);
+    } catch (e) {
+      log('托盘菜单或监听设置失败: $e');
+      // 菜单失败相对次要，记录并继续
+    }
     
-    trayManager.addListener(this);
     _isInitialized = true;
   }
 
