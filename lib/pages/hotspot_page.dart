@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../services/hotspot_service.dart';
 import '../services/config_service.dart';
+import '../theme/ui_spacing.dart';
 
 /// 热点管理页面 (Mobile Hotspot Version)
 class HotspotPage extends StatefulWidget {
@@ -66,7 +67,7 @@ class _HotspotPageState extends State<HotspotPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             CircularProgressIndicator(),
-            SizedBox(height: 16),
+            SizedBox(height: AppSpacing.lg),
             Text('正在运行诊断...'),
           ],
         ),
@@ -84,12 +85,12 @@ class _HotspotPageState extends State<HotspotPage> {
         '-Command',
         r"$ErrorActionPreference='Stop';$profile=[Windows.Networking.Connectivity.NetworkInformation,Windows.Networking.Connectivity,ContentType=WindowsRuntime]::GetInternetConnectionProfile();if($null -eq $profile){Write-Output 'NoInternetProfile'}else{$m=[Windows.Networking.NetworkOperators.NetworkOperatorTetheringManager,Windows.Networking.NetworkOperators,ContentType=WindowsRuntime]::CreateFromConnectionProfile($profile);Write-Output ('State: ' + $m.TetheringOperationalState); Write-Output ('Clients: ' + $m.ClientCount)}",
       ], runInShell: true);
-      
+
       diagnosticResults.add('系统移动热点诊断:');
       if (mobileResult.exitCode == 0) {
-         diagnosticResults.add(mobileResult.stdout.toString().trim());
+        diagnosticResults.add(mobileResult.stdout.toString().trim());
       } else {
-         diagnosticResults.add('PowerShell 执行出错:\n${mobileResult.stderr}');
+        diagnosticResults.add('PowerShell 执行出错:\n${mobileResult.stderr}');
       }
 
       if (mounted) {
@@ -166,14 +167,14 @@ class _HotspotPageState extends State<HotspotPage> {
       ),
       body: Consumer<HotspotService>(
         builder: (context, hotspotService, _) => SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(AppSpacing.page),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildAdminBanner(colorScheme),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.section),
               _buildStatusCard(context, colorScheme, hotspotService),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.section),
               _buildConfigCard(context, colorScheme),
             ],
           ),
@@ -191,11 +192,11 @@ class _HotspotPageState extends State<HotspotPage> {
         side: BorderSide(color: colorScheme.outlineVariant),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
                 color: colorScheme.secondaryContainer,
                 borderRadius: BorderRadius.circular(10),
@@ -206,7 +207,7 @@ class _HotspotPageState extends State<HotspotPage> {
                 size: 20,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -222,8 +223,9 @@ class _HotspotPageState extends State<HotspotPage> {
                   Text(
                     '配置系统移动热点建议以管理员权限运行',
                     style: TextStyle(
-                      color: colorScheme.onSecondaryContainer
-                          .withValues(alpha: 0.8),
+                      color: colorScheme.onSecondaryContainer.withValues(
+                        alpha: 0.8,
+                      ),
                       fontSize: 12,
                     ),
                   ),
@@ -245,14 +247,14 @@ class _HotspotPageState extends State<HotspotPage> {
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSpacing.page),
         child: Column(
           children: [
             // 状态显示
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   decoration: BoxDecoration(
                     color: hotspotService.status == HotspotStatus.started
                         ? colorScheme.primaryContainer
@@ -269,7 +271,7 @@ class _HotspotPageState extends State<HotspotPage> {
                         : colorScheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: AppSpacing.lg),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -284,7 +286,7 @@ class _HotspotPageState extends State<HotspotPage> {
                         ),
                       ),
                       if (hotspotService.status == HotspotStatus.started) ...[
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppSpacing.xs),
                         Text(
                           'IP: ${hotspotService.ipAddress}',
                           style: TextStyle(
@@ -301,9 +303,9 @@ class _HotspotPageState extends State<HotspotPage> {
 
             // 错误信息
             if (hotspotService.errorMessage != null) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
                   color: colorScheme.errorContainer,
                   borderRadius: BorderRadius.circular(12),
@@ -315,7 +317,7 @@ class _HotspotPageState extends State<HotspotPage> {
                       color: colorScheme.onErrorContainer,
                       size: 20,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(
                         hotspotService.errorMessage!,
@@ -332,7 +334,7 @@ class _HotspotPageState extends State<HotspotPage> {
 
             // 热点信息（仅在启动时显示）
             if (hotspotService.status == HotspotStatus.started) ...[
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.page),
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -371,7 +373,7 @@ class _HotspotPageState extends State<HotspotPage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: hotspotService.status == HotspotStatus.stopping
@@ -400,14 +402,14 @@ class _HotspotPageState extends State<HotspotPage> {
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSpacing.page),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(AppSpacing.sm),
                   decoration: BoxDecoration(
                     color: colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(12),
@@ -418,17 +420,14 @@ class _HotspotPageState extends State<HotspotPage> {
                     color: colorScheme.primary,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.md),
                 const Text(
                   '配置热点',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.page),
             TextField(
               controller: _ssidController,
               decoration: InputDecoration(
@@ -443,7 +442,7 @@ class _HotspotPageState extends State<HotspotPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             TextField(
               controller: _passwordController,
               obscureText: _obscurePassword,
@@ -469,13 +468,13 @@ class _HotspotPageState extends State<HotspotPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xl),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
                 onPressed: _applyChanges,
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -499,7 +498,7 @@ class _HotspotPageState extends State<HotspotPage> {
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: SelectableText(
             value,
@@ -513,4 +512,3 @@ class _HotspotPageState extends State<HotspotPage> {
     );
   }
 }
-

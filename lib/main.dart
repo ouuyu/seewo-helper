@@ -141,6 +141,25 @@ Future<void> main(List<String> args) async {
     eventListenService.startListening();
   }
 
+  // 如果开启了自动上传，则立即开始扫描并启动监控
+  if (config.enableAutoUpload) {
+    final configDir = config.configDirectory;
+    // 异步执行扫描和上传，不阻塞应用启动
+    Future(() async {
+      try {
+        await uploadService.scanFiles(configDir);
+        final hasPending = uploadService.fileItems
+            .any((item) => item.status == FileUploadStatus.pending);
+        if (hasPending) {
+          uploadService.startUpload(configDir);
+        }
+        uploadService.startAutoScan(configDir);
+      } catch (e) {
+        log('自动上传初始化失败: $e', name: 'Main');
+      }
+    });
+  }
+
   // 先启动应用
   runApp(
     MyApp(

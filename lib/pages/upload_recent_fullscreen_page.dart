@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../services/config_service.dart';
 import '../services/upload_service.dart';
+import '../theme/ui_spacing.dart';
 
 /// 最近文件全屏页面（卡片化瀑布流 + 二维码信息）
 class UploadRecentFullscreenPage extends StatefulWidget {
@@ -18,7 +19,8 @@ class UploadRecentFullscreenPage extends StatefulWidget {
       _UploadRecentFullscreenPageState();
 }
 
-class _UploadRecentFullscreenPageState extends State<UploadRecentFullscreenPage> {
+class _UploadRecentFullscreenPageState
+    extends State<UploadRecentFullscreenPage> {
   bool _loading = true;
 
   String get _configDirectory {
@@ -48,14 +50,14 @@ class _UploadRecentFullscreenPageState extends State<UploadRecentFullscreenPage>
   }
 
   int _crossAxisCountByWidth(double width) {
-    const horizontalPadding = 32.0;
-    const spacing = 12.0;
+    const horizontalPadding = AppSpacing.page * 2;
+    const spacing = AppSpacing.section;
     const baseCardWidth = 220.0;
 
     final availableWidth = math.max(320, width - horizontalPadding);
     final targetCardWidth = baseCardWidth;
-    final columns =
-        ((availableWidth + spacing) / (targetCardWidth + spacing)).floor();
+    final columns = ((availableWidth + spacing) / (targetCardWidth + spacing))
+        .floor();
     return columns.clamp(2, 10);
   }
 
@@ -87,7 +89,7 @@ class _UploadRecentFullscreenPageState extends State<UploadRecentFullscreenPage>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.history, size: 56, color: Colors.grey[350]),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(
                     '暂无最近文件记录',
                     style: TextStyle(
@@ -104,16 +106,20 @@ class _UploadRecentFullscreenPageState extends State<UploadRecentFullscreenPage>
           return LayoutBuilder(
             builder: (context, constraints) {
               final columns = _crossAxisCountByWidth(constraints.maxWidth);
-              final contentWidth = math.max(320, constraints.maxWidth - 32);
-              final cardWidth = (contentWidth - (columns - 1) * 12) / columns;
+              final contentWidth = math.max(
+                320,
+                constraints.maxWidth - AppSpacing.page * 2,
+              );
+              final cardWidth =
+                  (contentWidth - (columns - 1) * AppSpacing.section) / columns;
               final qrSize = (cardWidth - 40).clamp(110.0, 150.0);
               const cardHeight = 360.0;
 
               return MasonryGridView.count(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpacing.page),
                 crossAxisCount: columns,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
+                mainAxisSpacing: AppSpacing.section,
+                crossAxisSpacing: AppSpacing.section,
                 itemCount: records.length,
                 itemBuilder: (context, index) {
                   final record = records[index];
@@ -127,7 +133,7 @@ class _UploadRecentFullscreenPageState extends State<UploadRecentFullscreenPage>
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(AppSpacing.sm),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -149,7 +155,7 @@ class _UploadRecentFullscreenPageState extends State<UploadRecentFullscreenPage>
                                 color: Colors.grey[700],
                               ),
                             ),
-                            const SizedBox(height: 3),
+                            const SizedBox(height: AppSpacing.xxs),
                             Text(
                               '大小：${UploadService.formatSize(record.fileSize)}',
                               style: TextStyle(
@@ -157,7 +163,7 @@ class _UploadRecentFullscreenPageState extends State<UploadRecentFullscreenPage>
                                 color: Colors.grey[700],
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: AppSpacing.sm),
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(6),
@@ -178,7 +184,7 @@ class _UploadRecentFullscreenPageState extends State<UploadRecentFullscreenPage>
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: AppSpacing.sm),
                             Expanded(
                               child: Center(
                                 child: Container(

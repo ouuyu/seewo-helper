@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/config_service.dart';
 import '../services/event_listen_service.dart';
+import '../theme/ui_spacing.dart';
 
 /// 事件监听页面 - 监控指定进程打开的文件
 class EventListenPage extends StatefulWidget {
@@ -59,8 +60,7 @@ class _EventListenPageState extends State<EventListenPage> {
     } else {
       // 从配置加载参数
       final config = configService.getConfig();
-      final eventListenDir =
-          '${config.configDirectory}\\EventListen';
+      final eventListenDir = '${config.configDirectory}\\EventListen';
       final processesStr = config.eventListenProcesses;
       final processes = processesStr
           .split(',')
@@ -83,10 +83,7 @@ class _EventListenPageState extends State<EventListenPage> {
       appBar: AppBar(
         title: const Text(
           '事件监听',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
         ),
         elevation: 0,
         backgroundColor: Theme.of(context).colorScheme.surface,
@@ -110,13 +107,13 @@ class _EventListenPageState extends State<EventListenPage> {
             children: [
               // 状态与控制区域
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(AppSpacing.page),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 状态卡片
                     _buildStatusCard(context, service),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.section),
                     // 监听进程列表卡片
                     _buildProcessCard(context, service),
                   ],
@@ -125,7 +122,12 @@ class _EventListenPageState extends State<EventListenPage> {
               // 日志卡片
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.page,
+                    0,
+                    AppSpacing.page,
+                    AppSpacing.page,
+                  ),
                   child: Card(
                     elevation: 1,
                     shape: RoundedRectangleBorder(
@@ -145,7 +147,7 @@ class _EventListenPageState extends State<EventListenPage> {
                                 size: 20,
                                 color: Colors.grey[600],
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: AppSpacing.sm),
                               Text(
                                 '运行日志',
                                 style: TextStyle(
@@ -171,9 +173,7 @@ class _EventListenPageState extends State<EventListenPage> {
                           ),
                         ),
                         const Divider(height: 1),
-                        Expanded(
-                          child: _buildLogArea(context, service),
-                        ),
+                        Expanded(child: _buildLogArea(context, service)),
                       ],
                     ),
                   ),
@@ -192,16 +192,14 @@ class _EventListenPageState extends State<EventListenPage> {
 
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Row(
           children: [
             // 状态指示灯
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
                 color: isListening
                     ? Colors.green.withValues(alpha: 0.1)
@@ -214,7 +212,7 @@ class _EventListenPageState extends State<EventListenPage> {
                 color: isListening ? Colors.green : Colors.grey,
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: AppSpacing.lg),
             // 状态信息
             Expanded(
               child: Column(
@@ -230,24 +228,23 @@ class _EventListenPageState extends State<EventListenPage> {
                           shape: BoxShape.circle,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.sm),
                       Text(
                         isListening ? '正在监听' : '未启动',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: isListening ? Colors.green[700] : Colors.grey[600],
+                          color: isListening
+                              ? Colors.green[700]
+                              : Colors.grey[600],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     '已复制文件: ${service.copiedCount} 个',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                   ),
                 ],
               ),
@@ -255,10 +252,7 @@ class _EventListenPageState extends State<EventListenPage> {
             // 控制按钮
             FilledButton.icon(
               onPressed: _toggleListening,
-              icon: Icon(
-                isListening ? Icons.stop : Icons.play_arrow,
-                size: 20,
-              ),
+              icon: Icon(isListening ? Icons.stop : Icons.play_arrow, size: 20),
               label: Text(isListening ? '停止' : '开始'),
               style: FilledButton.styleFrom(
                 backgroundColor: isListening ? Colors.red : Colors.green,
@@ -291,11 +285,9 @@ class _EventListenPageState extends State<EventListenPage> {
 
     return Card(
       elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -306,7 +298,7 @@ class _EventListenPageState extends State<EventListenPage> {
                   size: 18,
                   color: Theme.of(context).colorScheme.primary,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 Text(
                   '监听进程',
                   style: TextStyle(
@@ -317,7 +309,7 @@ class _EventListenPageState extends State<EventListenPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Wrap(
               spacing: 4,
               runSpacing: 4,
@@ -336,14 +328,14 @@ class _EventListenPageState extends State<EventListenPage> {
                 }
                 return Chip(
                   avatar: Icon(icon, size: 16),
-                  label: Text(
-                    proc,
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                  backgroundColor:
-                      Theme.of(context).colorScheme.surfaceContainerHighest,
+                  label: Text(proc, style: const TextStyle(fontSize: 13)),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest,
                   side: BorderSide.none,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                  ),
                 );
               }).toList(),
             ),
@@ -362,26 +354,16 @@ class _EventListenPageState extends State<EventListenPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.info_outline,
-              size: 48,
-              color: Colors.grey[300],
-            ),
-            const SizedBox(height: 12),
+            Icon(Icons.info_outline, size: 48, color: Colors.grey[300]),
+            const SizedBox(height: AppSpacing.md),
             Text(
               '暂无日志',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[400],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[400]),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               '点击"开始"按钮启动监听',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[350],
-              ),
+              style: TextStyle(fontSize: 12, color: Colors.grey[350]),
             ),
           ],
         ),
@@ -390,7 +372,7 @@ class _EventListenPageState extends State<EventListenPage> {
 
     return ListView.builder(
       controller: _logScrollController,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       itemCount: logs.length,
       itemBuilder: (context, index) {
         final logEntry = logs[index];
@@ -398,7 +380,7 @@ class _EventListenPageState extends State<EventListenPage> {
         final isCopy = logEntry.contains('已复制');
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 2),
+          padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -406,14 +388,14 @@ class _EventListenPageState extends State<EventListenPage> {
                 isCopy
                     ? Icons.file_copy
                     : isError
-                        ? Icons.error_outline
-                        : Icons.chevron_right,
+                    ? Icons.error_outline
+                    : Icons.chevron_right,
                 size: 14,
                 color: isCopy
                     ? Colors.green
                     : isError
-                        ? Colors.red
-                        : Colors.grey[400],
+                    ? Colors.red
+                    : Colors.grey[400],
               ),
               const SizedBox(width: 6),
               Expanded(
@@ -425,8 +407,8 @@ class _EventListenPageState extends State<EventListenPage> {
                     color: isCopy
                         ? Colors.green[700]
                         : isError
-                            ? Colors.red[700]
-                            : Colors.grey[700],
+                        ? Colors.red[700]
+                        : Colors.grey[700],
                   ),
                 ),
               ),

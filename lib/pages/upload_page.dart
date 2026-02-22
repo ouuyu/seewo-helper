@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'upload_recent_fullscreen_page.dart';
 import '../services/config_service.dart';
 import '../services/upload_service.dart';
+import '../theme/ui_spacing.dart';
 
 /// 上传页面 - 将 EventListen 文件夹中的文件上传到服务器
 class UploadPage extends StatefulWidget {
@@ -25,10 +26,16 @@ class _UploadPageState extends State<UploadPage> {
   void initState() {
     super.initState();
     _autoUpload = context.read<ConfigService>().getConfig().enableAutoUpload;
-    // 页面加载后自动扫描
+    // 页面加载后自动扫描 (仅当未扫描过且未开启自动扫描时)
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _scanFiles();
-      // 如果自动上传开启，启动后台监控
+      final service = context.read<UploadService>();
+      // 如果开启了自动上传，且已经有数据，则不需要重新扫描
+      // 这里的 scanFiles 会在 main.dart 启动时异步执行
+      if (service.fileItems.isEmpty && !service.isUploading) {
+        await _scanFiles();
+      }
+
+      // 如果自动上传开启，启动后台监控 (startAutoScan 内部有防重入)
       if (_autoUpload && mounted) {
         context.read<UploadService>().startAutoScan(_configDirectory);
       }
@@ -62,11 +69,13 @@ class _UploadPageState extends State<UploadPage> {
   /// 扫描文件
   Future<void> _scanFiles() async {
     final service = context.read<UploadService>();
-    service.reset();
+    // 不再手动调用 service.reset()，因为 service.scanFiles 内部已包含清理逻辑，
+    // 且 reset() 会强行停止正在进行的后台上传。
     await service.scanFiles(_configDirectory);
 
-    final hasPending = service.fileItems
-        .any((item) => item.status == FileUploadStatus.pending);
+    final hasPending = service.fileItems.any(
+      (item) => item.status == FileUploadStatus.pending,
+    );
     if (_autoUpload && !service.isUploading && hasPending) {
       await service.startUpload(_configDirectory);
     }
@@ -88,15 +97,15 @@ class _UploadPageState extends State<UploadPage> {
       setState(() {
         _autoUpload = !value;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('自动上传设置保存失败')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('自动上传设置保存失败')));
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(value ? '已开启自动上传' : '已关闭自动上传')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(value ? '已开启自动上传' : '已关闭自动上传')));
 
     // 启动或停止后台监控
     final uploadService = context.read<UploadService>();
@@ -164,10 +173,10 @@ class _UploadPageState extends State<UploadPage> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(AppSpacing.sm),
                     decoration: BoxDecoration(
                       color: Theme.of(dialogContext)
                           .colorScheme
@@ -180,18 +189,17 @@ class _UploadPageState extends State<UploadPage> {
                       style: const TextStyle(fontSize: 12),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.md),
                   Center(
                     child: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(AppSpacing.sm),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: Theme.of(dialogContext)
-                              .colorScheme
-                              .outlineVariant
-                              .withValues(alpha: 0.6),
+                          color: Theme.of(
+                            dialogContext,
+                          ).colorScheme.outlineVariant.withValues(alpha: 0.6),
                         ),
                       ),
                       child: SizedBox.square(
@@ -218,9 +226,9 @@ class _UploadPageState extends State<UploadPage> {
               onPressed: () async {
                 await Clipboard.setData(ClipboardData(text: url));
                 if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('直链已复制到剪贴板')),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('直链已复制到剪贴板')));
               },
               icon: const Icon(Icons.copy, size: 18),
               label: const Text('复制链接'),
@@ -273,18 +281,21 @@ class _UploadPageState extends State<UploadPage> {
             children: [
               // 顶部操作区
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.page,
+                  AppSpacing.page,
+                  AppSpacing.page,
+                  AppSpacing.section,
+                ),
                 child: _buildStatusCard(context, service),
               ),
 
               // 中间文件网格
-              Expanded(
-                child: _buildFileList(context, service),
-              ),
-              
+              Expanded(child: _buildFileList(context, service)),
+
               // 底部日志区域
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpacing.page),
                 child: SizedBox(
                   height: 220,
                   child: _buildLogCard(context, service),
@@ -301,42 +312,43 @@ class _UploadPageState extends State<UploadPage> {
   Widget _buildStatusCard(BuildContext context, UploadService service) {
     final isUploading = service.isUploading;
     final hasFiles = service.fileItems.isNotEmpty;
-    final hasPending = service.fileItems
-        .any((item) => item.status == FileUploadStatus.pending);
+    final hasPending = service.fileItems.any(
+      (item) => item.status == FileUploadStatus.pending,
+    );
 
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Row(
           children: [
             // 状态图标
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
                 color: isUploading
                     ? Colors.blue.withValues(alpha: 0.1)
                     : hasFiles
-                        ? Colors.green.withValues(alpha: 0.1)
-                        : Colors.grey.withValues(alpha: 0.1),
+                    ? Colors.green.withValues(alpha: 0.1)
+                    : Colors.grey.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 isUploading
                     ? Icons.cloud_upload
                     : hasFiles
-                        ? Icons.cloud_done
-                        : Icons.cloud_off,
+                    ? Icons.cloud_done
+                    : Icons.cloud_off,
                 size: 28,
                 color: isUploading
                     ? Colors.blue
                     : hasFiles
-                        ? Colors.green
-                        : Colors.grey,
+                    ? Colors.green
+                    : Colors.grey,
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: AppSpacing.lg),
             // 状态信息
             Expanded(
               child: Column(
@@ -352,7 +364,7 @@ class _UploadPageState extends State<UploadPage> {
                           shape: BoxShape.circle,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.sm),
                       Text(
                         isUploading ? '正在上传...' : '就绪',
                         style: TextStyle(
@@ -365,7 +377,7 @@ class _UploadPageState extends State<UploadPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     '共 ${service.totalCount} 个文件  |  '
                     '成功 ${service.uploadedCount}  |  '
@@ -393,7 +405,7 @@ class _UploadPageState extends State<UploadPage> {
                     ),
                   ],
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 // 刷新按钮
                 OutlinedButton.icon(
                   onPressed: isUploading ? null : _scanFiles,
@@ -409,14 +421,14 @@ class _UploadPageState extends State<UploadPage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 // 上传/停止按钮
                 FilledButton.icon(
                   onPressed: isUploading
                       ? _stopUpload
                       : hasPending
-                          ? _startUpload
-                          : null,
+                      ? _startUpload
+                      : null,
                   icon: Icon(
                     isUploading ? Icons.stop : Icons.cloud_upload,
                     size: 20,
@@ -452,7 +464,7 @@ class _UploadPageState extends State<UploadPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.folder_open, size: 64, color: Colors.grey[200]),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               '待办事项列表为空',
               style: TextStyle(
@@ -461,7 +473,7 @@ class _UploadPageState extends State<UploadPage> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Text(
               '点击"扫描"检测文件',
               style: TextStyle(color: Colors.grey[300], fontSize: 13),
@@ -472,12 +484,13 @@ class _UploadPageState extends State<UploadPage> {
     }
 
     return MasonryGridView.count(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page),
       crossAxisCount: 2, // 2 列瀑布流
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
       itemCount: items.length,
-      itemBuilder: (context, index) => _buildModernFileCard(context, items[index]),
+      itemBuilder: (context, index) =>
+          _buildModernFileCard(context, items[index]),
     );
   }
 
@@ -491,35 +504,35 @@ class _UploadPageState extends State<UploadPage> {
       String statusText,
     ) = switch (item.status) {
       FileUploadStatus.pending => (
-          Colors.orange,
-          Colors.orange.withValues(alpha: 0.08),
-          Icons.schedule_rounded,
-          '等待上传'
-        ),
+        Colors.orange,
+        Colors.orange.withValues(alpha: 0.08),
+        Icons.schedule_rounded,
+        '等待上传',
+      ),
       FileUploadStatus.uploading => (
-          Colors.blue,
-          Colors.blue.withValues(alpha: 0.08),
-          Icons.cloud_upload_rounded,
-          '上传中...'
-        ),
+        Colors.blue,
+        Colors.blue.withValues(alpha: 0.08),
+        Icons.cloud_upload_rounded,
+        '上传中...',
+      ),
       FileUploadStatus.success => (
-          Colors.green,
-          Colors.green.withValues(alpha: 0.08),
-          Icons.check_circle_rounded,
-          '已完成'
-        ),
+        Colors.green,
+        Colors.green.withValues(alpha: 0.08),
+        Icons.check_circle_rounded,
+        '已完成',
+      ),
       FileUploadStatus.failed => (
-          Colors.red,
-          Colors.red.withValues(alpha: 0.08),
-          Icons.error_rounded,
-          '失败'
-        ),
+        Colors.red,
+        Colors.red.withValues(alpha: 0.08),
+        Icons.error_rounded,
+        '失败',
+      ),
       FileUploadStatus.skipped => (
-          Colors.grey,
-          Colors.grey.withValues(alpha: 0.08),
-          Icons.skip_next_rounded,
-          '已跳过'
-        ),
+        Colors.grey,
+        Colors.grey.withValues(alpha: 0.08),
+        Icons.skip_next_rounded,
+        '已跳过',
+      ),
     };
 
     return Container(
@@ -533,10 +546,7 @@ class _UploadPageState extends State<UploadPage> {
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(
-          color: baseColor.withValues(alpha: 0.1),
-          width: 1,
-        ),
+        border: Border.all(color: baseColor.withValues(alpha: 0.1), width: 1),
       ),
       child: Material(
         color: Colors.transparent,
@@ -556,10 +566,15 @@ class _UploadPageState extends State<UploadPage> {
             children: [
               // 顶部状态栏
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
                 decoration: BoxDecoration(
                   color: bgColor,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -589,9 +604,9 @@ class _UploadPageState extends State<UploadPage> {
                   ],
                 ),
               ),
-              
+
               Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -606,13 +621,16 @@ class _UploadPageState extends State<UploadPage> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
-                    
+                    const SizedBox(height: AppSpacing.sm),
+
                     // 文件大小与扩展名
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: AppSpacing.xxs,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.grey[100],
                             borderRadius: BorderRadius.circular(4),
@@ -635,9 +653,9 @@ class _UploadPageState extends State<UploadPage> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.sm),
                         // 错误信息展示
-                        if (item.status == FileUploadStatus.failed && 
+                        if (item.status == FileUploadStatus.failed &&
                             item.errorMessage != null)
                           Icon(
                             Icons.info_outline_rounded,
@@ -673,11 +691,14 @@ class _UploadPageState extends State<UploadPage> {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
             child: Row(
               children: [
                 Icon(Icons.article_outlined, size: 20, color: Colors.grey[600]),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 Text(
                   '上传日志',
                   style: TextStyle(
@@ -694,7 +715,9 @@ class _UploadPageState extends State<UploadPage> {
                     label: const Text('清空'),
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.grey[600],
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                      ),
                     ),
                   ),
               ],
@@ -717,12 +740,12 @@ class _UploadPageState extends State<UploadPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.info_outline, size: 48, color: Colors.grey[300]),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(
               '暂无日志',
               style: TextStyle(fontSize: 14, color: Colors.grey[400]),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               '点击"扫描"扫描文件后点击"上传"开始',
               style: TextStyle(fontSize: 12, color: Colors.grey[350]),
@@ -734,16 +757,18 @@ class _UploadPageState extends State<UploadPage> {
 
     return ListView.builder(
       controller: _logScrollController,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       itemCount: logs.length,
       itemBuilder: (context, index) {
         final logEntry = logs[index];
         final isError =
-            logEntry.contains('失败') || logEntry.contains('异常') || logEntry.contains('超时');
+            logEntry.contains('失败') ||
+            logEntry.contains('异常') ||
+            logEntry.contains('超时');
         final isSuccess = logEntry.contains('成功');
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 2),
+          padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -751,14 +776,14 @@ class _UploadPageState extends State<UploadPage> {
                 isSuccess
                     ? Icons.check_circle_outline
                     : isError
-                        ? Icons.error_outline
-                        : Icons.chevron_right,
+                    ? Icons.error_outline
+                    : Icons.chevron_right,
                 size: 14,
                 color: isSuccess
                     ? Colors.green
                     : isError
-                        ? Colors.red
-                        : Colors.grey[400],
+                    ? Colors.red
+                    : Colors.grey[400],
               ),
               const SizedBox(width: 6),
               Expanded(
@@ -770,8 +795,8 @@ class _UploadPageState extends State<UploadPage> {
                     color: isSuccess
                         ? Colors.green[700]
                         : isError
-                            ? Colors.red[700]
-                            : Colors.grey[700],
+                        ? Colors.red[700]
+                        : Colors.grey[700],
                   ),
                 ),
               ),

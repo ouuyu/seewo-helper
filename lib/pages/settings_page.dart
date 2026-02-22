@@ -7,6 +7,7 @@ import '../models/setting_item.dart';
 import '../services/config_service.dart';
 import '../services/autostart_service.dart';
 import '../services/shortcut_service.dart';
+import '../theme/ui_spacing.dart';
 
 /// 设置页面 - 使用统一的配置项批量渲染
 class SettingsPage extends StatefulWidget {
@@ -106,7 +107,7 @@ class _SettingsPageState extends State<SettingsPage> {
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -114,7 +115,7 @@ class _SettingsPageState extends State<SettingsPage> {
               children: [
                 if (setting.icon != null)
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(AppSpacing.sm),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(12),
@@ -125,7 +126,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
-                if (setting.icon != null) const SizedBox(width: 12),
+                if (setting.icon != null) const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Text(
                     setting.title,
@@ -137,7 +138,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: _controllers[setting.key],
               decoration: InputDecoration(
@@ -166,11 +167,14 @@ class _SettingsPageState extends State<SettingsPage> {
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.sm,
+          horizontal: AppSpacing.md,
+        ),
         child: ListTile(
           leading: setting.icon != null
               ? Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(AppSpacing.sm),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(12),
@@ -187,7 +191,7 @@ class _SettingsPageState extends State<SettingsPage> {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           subtitle: Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: AppSpacing.xs),
             child: Text(
               setting.key == 'configDirectory'
                   ? (_controllers[setting.key]?.text ?? setting.value)
@@ -213,11 +217,14 @@ class _SettingsPageState extends State<SettingsPage> {
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.sm,
+          horizontal: AppSpacing.md,
+        ),
         child: ListTile(
           leading: setting.icon != null
               ? Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(AppSpacing.sm),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(12),
@@ -235,7 +242,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           subtitle: setting.description != null
               ? Padding(
-                  padding: const EdgeInsets.only(top: 4),
+                  padding: const EdgeInsets.only(top: AppSpacing.xs),
                   child: Text(
                     setting.description!,
                     style: TextStyle(fontSize: 13, color: Colors.grey[600]),
@@ -257,7 +264,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(top: 4, bottom: 12),
+      padding: const EdgeInsets.only(top: AppSpacing.xs, bottom: AppSpacing.md),
       child: Text(
         title,
         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
@@ -267,7 +274,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _buildGroupHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(top: 2, bottom: 10),
+      padding: const EdgeInsets.only(
+        top: AppSpacing.xxs,
+        bottom: AppSpacing.sm,
+      ),
       child: Text(
         title,
         style: TextStyle(
@@ -340,7 +350,7 @@ class _SettingsPageState extends State<SettingsPage> {
     if (success) {
       // 创建/更新开始菜单快捷方式（始终覆盖为最新路径）
       await ShortcutService.createStartMenuShortcut();
-      
+
       // 处理开机自启动设置（始终覆盖为最新路径）
       if (_config.enableAutostart) {
         // 传递静默启动参数到注册表（-Force参数确保覆盖）
@@ -387,25 +397,27 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(AppSpacing.page),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 按分区与分组渲染配置项（根据 showInSettings 属性过滤）
                   for (final section in _config.sections)
                     if (section.showInSettings) ...[
-                    _buildSectionHeader(section.title),
-                    for (final group in section.groups) ...[
-                      _buildGroupHeader(group.title),
-                      for (final setting in group.items)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: _buildSettingWidget(setting),
-                        ),
-                      const SizedBox(height: 8),
+                      _buildSectionHeader(section.title),
+                      for (final group in section.groups) ...[
+                        _buildGroupHeader(group.title),
+                        for (final setting in group.items)
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpacing.section,
+                            ),
+                            child: _buildSettingWidget(setting),
+                          ),
+                        const SizedBox(height: AppSpacing.sm),
+                      ],
+                      const SizedBox(height: AppSpacing.section),
                     ],
-                    const SizedBox(height: 16),
-                  ],
                 ],
               ),
             ),
@@ -423,7 +435,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ],
             ),
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(AppSpacing.page),
             child: SafeArea(
               child: SizedBox(
                 width: double.infinity,
@@ -435,7 +447,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.lg,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

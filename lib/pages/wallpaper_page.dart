@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/app_config.dart';
 import '../services/config_service.dart';
 import '../services/wallpaper_service.dart';
+import '../theme/ui_spacing.dart';
 
 class WallpaperPage extends StatefulWidget {
   const WallpaperPage({super.key});
@@ -58,15 +59,15 @@ class _WallpaperPageState extends State<WallpaperPage> {
           final config = configService.getConfig();
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(AppSpacing.page),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildWallpaperCard(wallpaperService),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.section),
                 _buildActions(context, config, wallpaperService),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.section),
                 _buildInfoCard(wallpaperService),
               ],
             ),
@@ -86,9 +87,9 @@ class _WallpaperPageState extends State<WallpaperPage> {
     );
 
     if (saved == true && mounted && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('壁纸设置已保存')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('壁纸设置已保存')));
       setState(() {});
     }
   }
@@ -118,7 +119,7 @@ class _WallpaperPageState extends State<WallpaperPage> {
                               size: 64,
                               color: Colors.grey[400],
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: AppSpacing.md),
                             Text(
                               '暂无壁纸',
                               style: TextStyle(
@@ -153,7 +154,7 @@ class _WallpaperPageState extends State<WallpaperPage> {
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Row(
           children: [
             FilledButton.icon(
@@ -163,7 +164,7 @@ class _WallpaperPageState extends State<WallpaperPage> {
               icon: const Icon(Icons.refresh),
               label: const Text('获取最新壁纸'),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             OutlinedButton.icon(
               onPressed: service.imageFile == null
                   ? null
@@ -196,15 +197,13 @@ class _WallpaperPageState extends State<WallpaperPage> {
     );
   }
 
-
-
   Widget _buildInfoCard(WallpaperService service) {
     final info = service.latest;
     return Card(
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -212,7 +211,7 @@ class _WallpaperPageState extends State<WallpaperPage> {
               '壁纸信息',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             _buildInfoRow('日期', info?.startDate ?? '--'),
             const SizedBox(height: 6),
             _buildInfoRow('描述', info?.copyright ?? '--'),
@@ -289,10 +288,14 @@ class _WallpaperSettingsDialogState extends State<_WallpaperSettingsDialog> {
     countdownEventController = TextEditingController(
       text: config.wallpaperCountdownEventName,
     );
-    resolutionController = TextEditingController(text: config.wallpaperResolution);
+    resolutionController = TextEditingController(
+      text: config.wallpaperResolution,
+    );
     marketController = TextEditingController(text: config.wallpaperMarket);
     indexController = TextEditingController(text: config.wallpaperIndex);
-    saveDirController = TextEditingController(text: config.wallpaperSaveDirectory);
+    saveDirController = TextEditingController(
+      text: config.wallpaperSaveDirectory,
+    );
   }
 
   @override
@@ -315,14 +318,21 @@ class _WallpaperSettingsDialogState extends State<_WallpaperSettingsDialog> {
     final countdownDate = countdownDateController.text.trim();
     final index = indexController.text.trim();
 
-    final countdownDateSetting = config.getSetting<String>('wallpaperCountdownDate');
+    final countdownDateSetting = config.getSetting<String>(
+      'wallpaperCountdownDate',
+    );
     final indexSetting = config.getSetting<String>('wallpaperIndex');
 
-    final countdownDateError = countdownDateSetting?.validator?.call(countdownDate);
+    final countdownDateError = countdownDateSetting?.validator?.call(
+      countdownDate,
+    );
     if (countdownDateError != null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(countdownDateError), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(countdownDateError),
+            backgroundColor: Colors.red,
+          ),
         );
         setState(() {
           isSaving = false;
@@ -382,8 +392,11 @@ class _WallpaperSettingsDialogState extends State<_WallpaperSettingsDialog> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('更新与应用', style: TextStyle(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
+              const Text(
+                '更新与应用',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: AppSpacing.sm),
               SwitchListTile(
                 value: autoRefresh,
                 contentPadding: EdgeInsets.zero,
@@ -404,9 +417,9 @@ class _WallpaperSettingsDialogState extends State<_WallpaperSettingsDialog> {
                   });
                 },
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               const Text('倒计时', style: TextStyle(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               SwitchListTile(
                 value: showCountdown,
                 contentPadding: EdgeInsets.zero,
@@ -417,7 +430,7 @@ class _WallpaperSettingsDialogState extends State<_WallpaperSettingsDialog> {
                   });
                 },
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               TextField(
                 controller: countdownDateController,
                 decoration: const InputDecoration(
@@ -426,7 +439,7 @@ class _WallpaperSettingsDialogState extends State<_WallpaperSettingsDialog> {
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: countdownEventController,
                 decoration: const InputDecoration(
@@ -434,9 +447,9 @@ class _WallpaperSettingsDialogState extends State<_WallpaperSettingsDialog> {
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               const Text('请求参数', style: TextStyle(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               TextField(
                 controller: resolutionController,
                 decoration: const InputDecoration(
@@ -445,7 +458,7 @@ class _WallpaperSettingsDialogState extends State<_WallpaperSettingsDialog> {
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: marketController,
                 decoration: const InputDecoration(
@@ -454,7 +467,7 @@ class _WallpaperSettingsDialogState extends State<_WallpaperSettingsDialog> {
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: indexController,
                 decoration: const InputDecoration(
@@ -463,9 +476,9 @@ class _WallpaperSettingsDialogState extends State<_WallpaperSettingsDialog> {
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               const Text('存储', style: TextStyle(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               TextField(
                 controller: saveDirController,
                 decoration: const InputDecoration(
