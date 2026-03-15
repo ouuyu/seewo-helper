@@ -183,14 +183,25 @@ class _WallpaperPageState extends State<WallpaperPage> {
               label: const Text('设置为桌面壁纸'),
             ),
             const Spacer(),
-            if (service.error != null)
-              Flexible(
-                child: Text(
-                  service.error!,
-                  style: TextStyle(color: Colors.red[600], fontSize: 12),
-                  overflow: TextOverflow.ellipsis,
-                ),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (service.statusMessage != null)
+                    Text(
+                      service.statusMessage!,
+                      style: TextStyle(color: Colors.orange[700], fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  if (service.error != null)
+                    Text(
+                      service.error!,
+                      style: TextStyle(color: Colors.red[600], fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
               ),
+            ),
           ],
         ),
       ),
@@ -213,6 +224,8 @@ class _WallpaperPageState extends State<WallpaperPage> {
             ),
             const SizedBox(height: AppSpacing.sm),
             _buildInfoRow('日期', info?.startDate ?? '--'),
+            const SizedBox(height: 6),
+            _buildInfoRow('来源', service.statusMessage == null ? '主源' : '冗余源'),
             const SizedBox(height: 6),
             _buildInfoRow('描述', info?.copyright ?? '--'),
             const SizedBox(height: 6),

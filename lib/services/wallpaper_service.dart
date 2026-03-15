@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
+import 'package:local_notifier/local_notifier.dart';
 import 'package:path/path.dart' as path;
 import '../models/app_config.dart';
 
@@ -22,12 +23,21 @@ class WallpaperInfo {
     required this.copyrightLink,
   });
 
+  static String _sanitizeDisplayText(String input) {
+    if (input.trim().isEmpty) return '';
+    var text = input;
+    text = text.replaceAll(RegExp(r'\([^()]*\)'), '');
+    text = text.replaceAll(RegExp(r'（[^（）]*）'), '');
+    text = text.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+    return text;
+  }
+
   factory WallpaperInfo.fromJson(Map<String, dynamic> json) {
     return WallpaperInfo(
       startDate: json['start_date']?.toString() ?? '',
       endDate: json['end_date']?.toString() ?? '',
       url: json['url']?.toString() ?? '',
-      copyright: json['copyright']?.toString() ?? '',
+      copyright: _sanitizeDisplayText(json['copyright']?.toString() ?? ''),
       copyrightLink: json['copyright_link']?.toString() ?? '',
     );
   }
@@ -35,16 +45,26 @@ class WallpaperInfo {
 
 class WallpaperService extends ChangeNotifier {
   static const String _apiBase = 'https://bing.biturl.top/';
+  static const String _fallbackApi =
+      'https://www.yumus.cn/api/?brand=bing&ua=uhd';
+  static const String _cloudflareDoh = 'https://cloudflare-dns.com/dns-query';
 
   bool _isLoading = false;
   String? _error;
+  String? _statusMessage;
   WallpaperInfo? _latest;
   File? _imageFile; // 原始图片文件（展示给用户）
   File? _processedImageFile; // PS处理后的临时文件（用于设置壁纸）
   DateTime? _lastUpdated;
+  bool _isNotifierInitialized = false;
+  int? _lastCountdownDays;
+  String? _lastCountdownEventName;
+
+  static const int _autoWallpaperCutoffHour = 18;
 
   bool get isLoading => _isLoading;
   String? get error => _error;
+  String? get statusMessage => _statusMessage;
   WallpaperInfo? get latest => _latest;
   File? get imageFile => _imageFile;
   DateTime? get lastUpdated => _lastUpdated;
@@ -64,14 +84,29 @@ class WallpaperService extends ChangeNotifier {
   }) async {
     if (_isLoading) return; // 防止并发刷新
 
+    final shouldSetWallpaper = setAsWallpaper || config.wallpaperAutoSet;
+    if (shouldSetWallpaper && _isAfterAutoWallpaperCutoffTime()) {
+      return;
+    }
+
     _isLoading = true;
     _error = null;
+    _statusMessage = null;
     notifyListeners();
 
     try {
-      final info = await _fetchLatest(config);
-      // 下载原图（带缓存检查）
-      final originalImageFile = await _downloadImage(info, config);
+      late final WallpaperInfo info;
+      late final File originalImageFile;
+
+      try {
+        info = await _fetchLatest(config);
+        originalImageFile = await _downloadImage(info, config);
+      } catch (_) {
+        final fallbackResult = await _downloadFallbackImage(config);
+        info = fallbackResult.info;
+        originalImageFile = fallbackResult.file;
+        _statusMessage = '主源请求失败，已切换到冗余源下载壁纸';
+      }
 
       // 保存原图引用（展示给用户）
       _imageFile = originalImageFile;
@@ -90,7 +125,14 @@ class WallpaperService extends ChangeNotifier {
       // 如果启用了倒计时，在图片上绘制倒计时（带高斯模糊背景）
       if (config.wallpaperShowCountdown &&
           config.wallpaperCountdownDate.trim().isNotEmpty) {
+        _lastCountdownDays = _calculateCountdownDays(
+          config.wallpaperCountdownDate.trim(),
+        );
+        _lastCountdownEventName = config.wallpaperCountdownEventName.trim();
         processedFile = await _addCountdownToImage(processedFile, config);
+      } else {
+        _lastCountdownDays = null;
+        _lastCountdownEventName = null;
       }
 
       // 保存处理后的文件引用
@@ -100,6 +142,8 @@ class WallpaperService extends ChangeNotifier {
         final setResult = await setAsDesktopWallpaper(processedFile.path);
         if (!setResult) {
           _error = '设置桌面壁纸失败';
+        } else {
+          await _showWallpaperSetSuccessNotification();
         }
       }
     } catch (e) {
@@ -110,11 +154,83 @@ class WallpaperService extends ChangeNotifier {
     }
   }
 
+  bool _isAfterAutoWallpaperCutoffTime() {
+    return DateTime.now().hour >= _autoWallpaperCutoffHour;
+  }
+
   Future<bool> setCurrentAsWallpaper() async {
     // 使用处理后的临时文件设置壁纸
     final file = _processedImageFile ?? _imageFile;
     if (file == null) return false;
-    return setAsDesktopWallpaper(file.path);
+    final success = await setAsDesktopWallpaper(file.path);
+    if (success) {
+      await _showWallpaperSetSuccessNotification();
+    }
+    return success;
+  }
+
+  Future<void> _ensureNotifierInitialized() async {
+    if (_isNotifierInitialized) return;
+    await localNotifier.setup(
+      appName: 'Seewo Helper',
+      shortcutPolicy: ShortcutPolicy.requireCreate,
+    );
+    _isNotifierInitialized = true;
+  }
+
+  Future<void> _showWallpaperSetSuccessNotification() async {
+    if (!Platform.isWindows) return;
+
+    try {
+      await _ensureNotifierInitialized();
+
+      final isFallback = _statusMessage != null;
+
+      final lines = <String>[];
+      if (!isFallback) {
+        final fileInfo = _latest?.copyright.trim();
+        if (fileInfo != null && fileInfo.isNotEmpty) {
+          lines.add('文件信息：$fileInfo');
+        }
+      }
+
+      final title = _lastCountdownDays == null
+          ? '壁纸已更换'
+          : _buildCountdownTitle(
+              _lastCountdownDays!,
+              _lastCountdownEventName,
+            );
+
+      final notification = LocalNotification(
+        title: title,
+        body: lines.join('\n'),
+      );
+      await notification.show();
+    } catch (e) {
+      debugPrint('发送壁纸成功通知失败: $e');
+    }
+  }
+
+  int? _calculateCountdownDays(String targetDateStr) {
+    if (targetDateStr.trim().isEmpty) return null;
+    try {
+      final target = DateTime.parse(targetDateStr);
+      final today = DateTime.now();
+      final targetDay = DateTime(target.year, target.month, target.day);
+      final todayDay = DateTime(today.year, today.month, today.day);
+      return targetDay.difference(todayDay).inDays;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _buildCountdownTitle(int days, String? eventName) {
+    final name =
+        (eventName == null || eventName.trim().isEmpty) ? '目标日' : eventName;
+    if (days >= 0) {
+      return '距离$name还有$days天';
+    }
+    return '距离$name已过${days.abs()}天';
   }
 
   Future<WallpaperInfo> _fetchLatest(AppConfig config) async {
@@ -126,6 +242,17 @@ class WallpaperService extends ChangeNotifier {
     }..removeWhere((key, value) => value.isEmpty);
 
     final uri = Uri.parse(_apiBase).replace(queryParameters: query);
+
+    // 优先使用 Cloudflare DoH 做 CNAME + A 解析，降低本地 DNS 污染影响。
+    try {
+      final body = await _requestWithCloudflareResolvedDns(uri);
+      final json = jsonDecode(body) as Map<String, dynamic>;
+      return WallpaperInfo.fromJson(json);
+    } catch (e) {
+      debugPrint('Cloudflare DNS 解析请求失败，回退直连: $e');
+    }
+
+    // 回退：保持原有直连逻辑
     final client = HttpClient();
     try {
       final request = await client.getUrl(uri);
@@ -136,6 +263,86 @@ class WallpaperService extends ChangeNotifier {
       final body = await response.transform(utf8.decoder).join();
       final json = jsonDecode(body) as Map<String, dynamic>;
       return WallpaperInfo.fromJson(json);
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<String> _requestWithCloudflareResolvedDns(Uri uri) async {
+    final resolved = await _resolveHostByCloudflareDoh(uri.host);
+    final requestUri = uri.replace(host: resolved.ip);
+
+    final client = HttpClient();
+    client.connectionTimeout = const Duration(seconds: 10);
+    client.badCertificateCallback = (cert, host, port) {
+      if (host != resolved.ip) return false;
+      final pem = cert.pem.toLowerCase();
+      final requestHost = resolved.requestHost.toLowerCase();
+      return pem.contains(requestHost);
+    };
+
+    try {
+      final request = await client.getUrl(requestUri);
+      request.headers.set(HttpHeaders.hostHeader, resolved.requestHost);
+      request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+
+      final response = await request.close();
+      if (response.statusCode != HttpStatus.ok) {
+        throw HttpException('HTTP ${response.statusCode}', uri: requestUri);
+      }
+      return response.transform(utf8.decoder).join();
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<({String requestHost, String ip})> _resolveHostByCloudflareDoh(
+    String host,
+  ) async {
+    final cname = await _queryCloudflareDnsRecord(host, 5);
+    final requestHost = cname ?? host;
+    final ip = await _queryCloudflareDnsRecord(requestHost, 1);
+    if (ip == null || ip.isEmpty) {
+      throw const SocketException('Cloudflare DNS 未返回可用 A 记录');
+    }
+    return (requestHost: requestHost, ip: ip);
+  }
+
+  Future<String?> _queryCloudflareDnsRecord(String host, int type) async {
+    final uri = Uri.parse(_cloudflareDoh).replace(
+      queryParameters: {
+        'name': host,
+        'type': type.toString(),
+      },
+    );
+
+    final client = HttpClient();
+    client.connectionTimeout = const Duration(seconds: 8);
+
+    try {
+      final request = await client.getUrl(uri);
+      request.headers.set(HttpHeaders.acceptHeader, 'application/dns-json');
+      final response = await request.close();
+      if (response.statusCode != HttpStatus.ok) {
+        throw HttpException('HTTP ${response.statusCode}', uri: uri);
+      }
+
+      final body = await response.transform(utf8.decoder).join();
+      final data = jsonDecode(body) as Map<String, dynamic>;
+      final answers = data['Answer'];
+      if (answers is! List) return null;
+
+      for (final answer in answers) {
+        if (answer is! Map<String, dynamic>) continue;
+        final answerType = answer['type'];
+        final answerData = answer['data']?.toString();
+        if (answerType == type && answerData != null && answerData.isNotEmpty) {
+          return answerData.endsWith('.')
+              ? answerData.substring(0, answerData.length - 1)
+              : answerData;
+        }
+      }
+      return null;
     } finally {
       client.close();
     }
@@ -179,6 +386,51 @@ class WallpaperService extends ChangeNotifier {
       final bytes = await consolidateHttpClientResponseBytes(response);
       await file.writeAsBytes(bytes, flush: true);
       return file;
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<({WallpaperInfo info, File file})> _downloadFallbackImage(
+    AppConfig config,
+  ) async {
+    final fallbackUri = Uri.parse(_fallbackApi);
+    final directory = Directory(
+      config.wallpaperSaveDirectory.trim().isEmpty
+          ? '${config.configDirectory}\\Wallpapers'
+          : config.wallpaperSaveDirectory.trim(),
+    );
+    if (!await directory.exists()) {
+      await directory.create(recursive: true);
+    }
+
+    final client = HttpClient();
+    try {
+      final request = await client.getUrl(fallbackUri);
+      final response = await request.close();
+      if (response.statusCode != HttpStatus.ok) {
+        throw HttpException('HTTP ${response.statusCode}', uri: fallbackUri);
+      }
+
+      final now = DateTime.now();
+      final datePart =
+          '${now.year.toString().padLeft(4, '0')}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+      final fileName = '${datePart}_bing_fallback.jpg';
+      final filePath = path.join(directory.path, fileName);
+      final file = File(filePath);
+
+      final bytes = await consolidateHttpClientResponseBytes(response);
+      await file.writeAsBytes(bytes, flush: true);
+
+      final info = WallpaperInfo(
+        startDate: datePart,
+        endDate: datePart,
+        url: _fallbackApi,
+        copyright: '冗余源（yumus）',
+        copyrightLink: _fallbackApi,
+      );
+
+      return (info: info, file: file);
     } finally {
       client.close();
     }
