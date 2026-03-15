@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.2.5] - 2026-03-15
+- chore: release 1.2.5
+
 ## [1.2.4] - 2026-03-15
 - chore: release 1.2.4
 
